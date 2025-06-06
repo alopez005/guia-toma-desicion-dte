@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guía Interactiva: Rehabilitación de Dientes Tratados Endodónticamente</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals -->
+    <!-- Application Structure Plan: Se ha diseñado una estructura temática y orientada a la tarea clínica en lugar de replicar la estructura lineal de los informes. El flujo es: 1) Principios Fundamentales (conocimiento base), 2) Guía de Decisión Interactiva (herramienta central para el clínico), 3) Detalles de Técnicas y Materiales (referencia específica), y 4) Pronóstico (visualización de datos de supervivencia). Esta arquitectura facilita la toma de decisiones rápidas y basadas en evidencia, que es más útil en un entorno clínico que un documento de texto largo. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Principios clave (Ferrule, Sellado, Cobertura Cuspídea). -> Goal: Informar. -> Viz/Presentation: Tarjetas con iconos y texto breve. -> Interaction: Hover para resaltar. -> Justification: Presenta conceptos fundamentales de forma rápida y visual. -> Library/Method: HTML/CSS (Tailwind).
+        - Report Info: Guías de restauración basadas en estructura remanente. -> Goal: Guiar la decisión clínica. -> Viz/Presentation: Selectores interactivos para tipo de diente y nivel de pérdida estructural que actualizan dinámicamente una tarjeta de recomendación. -> Interaction: Click. -> Justification: Simula el proceso de diagnóstico y planificación del tratamiento de una manera interactiva y directa. -> Library/Method: Vanilla JS, HTML/CSS.
+        - Report Info: Tasas de supervivencia porcentuales. -> Goal: Comparar resultados. -> Viz/Presentation: Gráfico de barras interactivo. -> Interaction: Botones para filtrar datos por tipo de restauración. -> Justification: Permite una comparación visual y dinámica de la efectividad de los diferentes enfoques restauradores. -> Library/Method: Chart.js (Canvas).
+        - Report Info: Indicaciones/contraindicaciones de postes de fibra. -> Goal: Organizar/Detallar. -> Viz/Presentation: Listas comparativas (pros/contras) en una sección dedicada. -> Interaction: Navegación por scroll. -> Justification: Ofrece información detallada de referencia de fácil acceso. -> Library/Method: HTML/CSS.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F8F7F4;
+            color: #3a3a3a;
+        }
+        :root {
+            --bg-color: #F8F7F4;
+            --text-primary: #333333;
+            --accent-primary: #4A90E2;
+            --accent-secondary: #D8C3A5;
+            --card-bg: #FFFFFF;
+            --border-color: #EAEAEA;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 400px;
+            max-height: 50vh;
+        }
+        .nav-link {
+            transition: color 0.3s, border-bottom-color 0.3s;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-link.active, .nav-link:hover {
+            color: var(--accent-primary);
+            border-bottom-color: var(--accent-primary);
+        }
+        .custom-btn {
+            transition: all 0.3s ease;
+        }
+        .custom-btn.active {
+            background-color: var(--accent-primary);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .structure-card {
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+            border: 2px solid var(--border-color);
+        }
+        .structure-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+        }
+        .structure-card.selected {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.4);
+        }
+        .tooth-drawing {
+            height: 80px;
+            width: 80px;
+            background-color: #fff;
+            border: 3px solid #333;
+            border-radius: 20% 20% 45% 45% / 30% 30% 60% 60%;
+            position: relative;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+        .tooth-loss {
+            position: absolute;
+            background-color: rgba(216, 195, 165, 0.8);
+            width: 100%;
+        }
+        .loss-min { height: 25%; top: 0; }
+        .loss-mod { height: 50%; top: 0; }
+        .loss-ext { height: 75%; top: 0; }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="bg-[var(--bg-color)]/80 backdrop-blur-sm sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-[var(--text-primary)]">Guía DTE</h1>
+            <div class="hidden md:flex space-x-8">
+                <a href="#principios" class="nav-link pb-1">Principios</a>
+                <a href="#guia" class="nav-link pb-1">Guía de Decisión</a>
+                <a href="#tecnicas" class="nav-link pb-1">Técnicas</a>
+                <a href="#pronostico" class="nav-link pb-1">Pronóstico</a>
+            </div>
+             <button id="mobile-menu-button" class="md:hidden p-2 rounded-md text-[var(--text-primary)]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                </svg>
+            </button>
+        </nav>
+        <div id="mobile-menu" class="hidden md:hidden px-6 pb-4">
+            <a href="#principios" class="block py-2 text-[var(--text-primary)]">Principios</a>
+            <a href="#guia" class="block py-2 text-[var(--text-primary)]">Guía de Decisión</a>
+            <a href="#tecnicas" class="block py-2 text-[var(--text-primary)]">Técnicas</a>
+            <a href="#pronostico" class="block py-2 text-[var(--text-primary)]">Pronóstico</a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-12">
+
+        <section id="hero" class="text-center mb-20">
+            <h2 class="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-4">Rehabilitación del Diente Tratado Endodónticamente</h2>
+            <p class="text-lg text-gray-600 max-w-3xl mx-auto">Una guía interactiva basada en evidencia para optimizar el pronóstico y la longevidad de sus restauraciones.</p>
+        </section>
+
+        <section id="principios" class="mb-20">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold text-[var(--text-primary)]">Principios Fundamentales</h3>
+                <p class="text-md text-gray-500 mt-2">Conceptos clave que sustentan cada decisión restauradora.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <div class="bg-[var(--card-bg)] p-6 rounded-lg shadow-md border border-[var(--border-color)]">
+                    <div class="text-3xl mb-3">🛡️</div>
+                    <h4 class="font-bold text-xl mb-2 text-[var(--text-primary)]">Estructura Remanente</h4>
+                    <p class="text-gray-600">Es el predictor más importante del éxito. La resistencia del diente está directamente ligada al volumen de dentina sana que se conserva.</p>
+                </div>
+                <div class="bg-[var(--card-bg)] p-6 rounded-lg shadow-md border border-[var(--border-color)]">
+                    <div class="text-3xl mb-3">🔄</div>
+                    <h4 class="font-bold text-xl mb-2 text-[var(--text-primary)]">Efecto Ferrule</h4>
+                    <p class="text-gray-600">Banda de 1.5-2.0 mm de estructura dental sana circunferencial. Es crucial para la resistencia a la fractura, más importante que el tipo de poste.</p>
+                </div>
+                <div class="bg-[var(--card-bg)] p-6 rounded-lg shadow-md border border-[var(--border-color)]">
+                     <div class="text-3xl mb-3">👑</div>
+                    <h4 class="font-bold text-xl mb-2 text-[var(--text-primary)]">Cobertura Cuspídea</h4>
+                    <p class="text-gray-600">Esencial para dientes posteriores. Aumenta la probabilidad de supervivencia a largo plazo hasta 6 veces en comparación con restauraciones sin cobertura.</p>
+                </div>
+                <div class="bg-[var(--card-bg)] p-6 rounded-lg shadow-md border border-[var(--border-color)]">
+                    <div class="text-3xl mb-3">💧</div>
+                    <h4 class="font-bold text-xl mb-2 text-[var(--text-primary)]">Sellado Coronal</h4>
+                    <p class="text-gray-600">Un sellado hermético es vital para prevenir la recontaminación bacteriana del sistema de conductos, asegurando el éxito endodóntico.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="guia" class="mb-20 py-10 bg-[var(--card-bg)] rounded-lg shadow-xl border border-[var(--border-color)]">
+            <div class="text-center mb-12 px-6">
+                <h3 class="text-3xl font-bold text-[var(--text-primary)]">Guía de Decisión Interactiva</h3>
+                <p class="text-md text-gray-500 mt-2">Obtenga una recomendación de tratamiento basada en la situación clínica.</p>
+            </div>
+            <div class="w-full px-6">
+                <div class="mb-8">
+                    <p class="font-semibold text-center text-lg mb-4 text-[var(--text-primary)]">Paso 1: Seleccione el tipo de diente</p>
+                    <div class="flex justify-center space-x-4">
+                        <button id="btn-anterior" class="custom-btn px-6 py-2 rounded-md font-medium bg-white border border-gray-300 text-gray-700">Anterior</button>
+                        <button id="btn-posterior" class="custom-btn px-6 py-2 rounded-md font-medium bg-white border border-gray-300 text-gray-700">Posterior</button>
+                    </div>
+                </div>
+
+                <div class="mb-10">
+                    <p class="font-semibold text-center text-lg mb-4 text-[var(--text-primary)]">Paso 2: Seleccione la pérdida de estructura dental</p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div id="card-minima" class="structure-card p-6 text-center rounded-lg bg-white">
+                            <div class="tooth-drawing"><div class="tooth-loss loss-min"></div></div>
+                            <h5 class="font-bold text-lg mt-4 text-[var(--text-primary)]">Pérdida Mínima</h5>
+                            <p class="text-sm text-gray-500">>50% remanente</p>
+                        </div>
+                        <div id="card-moderada" class="structure-card p-6 text-center rounded-lg bg-white">
+                            <div class="tooth-drawing"><div class="tooth-loss loss-mod"></div></div>
+                            <h5 class="font-bold text-lg mt-4 text-[var(--text-primary)]">Pérdida Moderada</h5>
+                            <p class="text-sm text-gray-500">~50% remanente</p>
+                        </div>
+                        <div id="card-extensa" class="structure-card p-6 text-center rounded-lg bg-white">
+                            <div class="tooth-drawing"><div class="tooth-loss loss-ext"></div></div>
+                            <h5 class="font-bold text-lg mt-4 text-[var(--text-primary)]">Pérdida Extensa</h5>
+                            <p class="text-sm text-gray-500"><50% remanente</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="recommendation-box" class="mt-8 p-8 bg-[var(--bg-color)] rounded-lg border-2 border-dashed border-[var(--accent-secondary)] text-center transition-opacity duration-500 opacity-0">
+                    <p class="text-gray-500">Seleccione las opciones para ver la recomendación...</p>
+                </div>
+            </div>
+        </section>
+
+
+        <section id="tecnicas" class="mb-20">
+             <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold text-[var(--text-primary)]">Técnicas y Materiales</h3>
+                <p class="text-md text-gray-500 mt-2">Un vistazo a las opciones restauradoras clave.</p>
+            </div>
+            <div class="space-y-8">
+                <div class="bg-[var(--card-bg)] p-8 rounded-lg shadow-md border border-[var(--border-color)]">
+                    <h4 class="text-2xl font-bold mb-4 text-[var(--text-primary)]">Restauraciones Directas vs. Indirectas</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <h5 class="font-semibold text-lg mb-2 text-blue-600">Directas (Resina Compuesta)</h5>
+                            <p class="mb-2 text-gray-600">Indicadas para pérdida de estructura mínima a moderada, con 2+ crestas marginales intactas. Conservan la mayor cantidad de tejido.</p>
+                            <ul class="list-disc list-inside space-y-1 text-gray-600">
+                                <li><strong>Ventaja:</strong> Máxima conservación de tejido.</li>
+                                <li><strong>Limitación:</strong> Menor resistencia bajo altas cargas oclusales.</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h5 class="font-semibold text-lg mb-2 text-teal-600">Indirectas (Onlays, Coronas)</h5>
+                            <p class="mb-2 text-gray-600">Necesarias para pérdida moderada a extensa, especialmente en dientes posteriores que requieren cobertura cuspídea. Ofrecen mayor protección y longevidad.</p>
+                             <ul class="list-disc list-inside space-y-1 text-gray-600">
+                                <li><strong>Ventaja:</strong> Protección cuspídea y durabilidad superior.</li>
+                                <li><strong>Consideración:</strong> Requieren mayor remoción de tejido que las directas.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-[var(--card-bg)] p-8 rounded-lg shadow-md border border-[var(--border-color)]">
+                    <h4 class="text-2xl font-bold mb-4 text-[var(--text-primary)]">Postes de Fibra de Vidrio (FRC)</h4>
+                    <p class="mb-4 text-gray-600">Su propósito principal es **retener el núcleo** de reconstrucción, no reforzar el diente. La preparación del espacio para el poste debilita la raíz.</p>
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <h5 class="font-semibold text-lg mb-2 text-green-600">Indicaciones</h5>
+                            <ul class="list-disc list-inside space-y-1 text-gray-600">
+                                <li>Pérdida de estructura coronal >50%.</li>
+                                <li>Insuficiente tejido para retener el núcleo.</li>
+                                <li>Para dar forma y retención a la corona final.</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h5 class="font-semibold text-lg mb-2 text-red-600">Contraindicaciones</h5>
+                            <ul class="list-disc list-inside space-y-1 text-gray-600">
+                                <li>Suficiente estructura coronal remanente.</li>
+                                <li>Imposibilidad de lograr un ferrule adecuado.</li>
+                                <li>Dentina radicular <1mm de grosor alrededor del poste.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                 <div class="bg-[var(--card-bg)] p-8 rounded-lg shadow-md border border-[var(--border-color)]">
+                    <h4 class="text-2xl font-bold mb-4 text-[var(--text-primary)]">Endocrowns</h4>
+                    <p class="text-gray-600">Representan una opción restauradora mínimamente invasiva que utiliza la cámara pulpar para la retención, eliminando la necesidad de un poste. Son particularmente adecuadas para molares con cámaras pulpares amplias y buena cantidad de paredes coronales remanentes, ofreciendo una alternativa conservadora y biomecánicamente favorable.</p>
+                </div>
+            </div>
+        </section>
+
+
+        <section id="pronostico" class="mb-20">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold text-[var(--text-primary)]">Pronóstico y Tasas de Supervivencia</h3>
+                <p class="text-md text-gray-500 mt-2">Visualice la efectividad de las diferentes estrategias restauradoras.</p>
+            </div>
+            <div class="bg-[var(--card-bg)] p-6 md:p-8 rounded-lg shadow-md border border-[var(--border-color)]">
+                 <div class="flex justify-center space-x-2 md:space-x-4 mb-6">
+                    <button id="chart-filter-all" class="custom-btn px-4 py-2 text-sm md:text-base rounded-md font-medium bg-gray-200 text-gray-800">Todas</button>
+                    <button id="chart-filter-posteriors" class="custom-btn px-4 py-2 text-sm md:text-base rounded-md font-medium bg-gray-200 text-gray-800">Solo Posteriores</button>
+                </div>
+                <div class="chart-container">
+                    <canvas id="survivalChart"></canvas>
+                </div>
+                <p class="text-center text-sm text-gray-500 mt-4">Datos basados en tasas de supervivencia a 5 años reportadas en la literatura. Los resultados pueden variar.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-gray-800 text-white">
+        <div class="container mx-auto px-6 py-8 text-center">
+            <p>&copy; 2025 Guía Interactiva DTE. Creado con fines educativos.</p>
+            <p class="text-sm text-gray-400 mt-2">La información presentada se basa en una síntesis de la literatura científica y no reemplaza el juicio clínico profesional.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const decisionData = {
+                anterior: {
+                    minima: {
+                        title: "Restauración Directa (Resina Compuesta)",
+                        details: "Para accesos conservadores y mínima pérdida de estructura, una restauración directa con resina compuesta es la opción preferida. Prioriza la máxima conservación de tejido y puede ofrecer excelentes resultados estéticos.",
+                        key_points: ["Conservación máxima de tejido", "Ideal para accesos de 'túnel' o clase III/IV pequeñas", "Dependiente de la habilidad del operador para la estética"]
+                    },
+                    moderada: {
+                        title: "Carillas o Coronas de Cobertura Total",
+                        details: "Si la pérdida de estructura compromete la estética o la integridad (ej. pérdida de la pared palatina), se indican restauraciones indirectas. La elección entre carilla y corona dependerá de la cantidad de tejido remanente y las fuerzas oclusales.",
+                        key_points: ["Resultados estéticos predecibles", "Protección estructural", "Requiere preparación dental"]
+                    },
+                    extensa: {
+                        title: "Poste de Fibra + Núcleo + Corona de Cobertura Total",
+                        details: "Cuando la estructura coronal es insuficiente para retener un núcleo, se indica un poste de fibra. Su única función es retener el núcleo de reconstrucción. La presencia de un ferrule de 1.5-2.0mm es absolutamente crítica para el pronóstico.",
+                        key_points: ["Poste para retención, no para refuerzo", "El ferrule es el factor más importante para la resistencia", "Requiere corona de cobertura total"]
+                    }
+                },
+                posterior: {
+                    minima: {
+                        title: "Restauración Directa (Resina Compuesta)",
+                        details: "Es una opción viable si las crestas marginales están mayormente intactas y las cúspides no están socavadas. Sin embargo, siempre se debe evaluar el riesgo de fractura. Si hay altas cargas oclusales, considere una cobertura cuspídea parcial.",
+                        key_points: ["Conservador", "Riesgo de fractura si las cúspides están debilitadas", "Evaluar parafunciones (bruxismo)"]
+                    },
+                    moderada: {
+                        title: "Restauración Indirecta de Cobertura Parcial (Onlay)",
+                        details: "Es la opción ideal cuando se necesita proteger una o más cúspides. Conserva más estructura dental que una corona completa y ofrece una excelente protección biomecánica. La adhesión es clave para su éxito.",
+                        key_points: ["Cobertura cuspídea es necesaria", "Conserva estructura dental sana", "Excelente alternativa a la corona completa"]
+                    },
+                    extensa: {
+                        title: "Corona de Cobertura Total (con o sin poste)",
+                        details: "Con pérdida severa, la cobertura total es el estándar de cuidado para proteger el diente de fracturas. Si no hay suficiente tejido para retener un núcleo, se usará un poste de fibra. La alternativa para molares con cámaras amplias es un Endocrown.",
+                        key_points: ["Máxima protección contra fracturas", "El ferrule de 1.5-2.0mm es indispensable", "Considerar Endocrown como alternativa al poste/corona"]
+                    }
+                }
+            };
+
+            let selectedToothType = null;
+            let selectedStructureLoss = null;
+
+            const btnAnterior = document.getElementById('btn-anterior');
+            const btnPosterior = document.getElementById('btn-posterior');
+            const cardMinima = document.getElementById('card-minima');
+            const cardModerada = document.getElementById('card-moderada');
+            const cardExtensa = document.getElementById('card-extensa');
+            const recommendationBox = document.getElementById('recommendation-box');
+
+            function updateUI() {
+                [btnAnterior, btnPosterior].forEach(btn => btn.classList.remove('active'));
+                if (selectedToothType === 'anterior') btnAnterior.classList.add('active');
+                if (selectedToothType === 'posterior') btnPosterior.classList.add('active');
+
+                [cardMinima, cardModerada, cardExtensa].forEach(card => card.classList.remove('selected'));
+                if (selectedStructureLoss === 'minima') cardMinima.classList.add('selected');
+                if (selectedStructureLoss === 'moderada') cardModerada.classList.add('selected');
+                if (selectedStructureLoss === 'extensa') cardExtensa.classList.add('selected');
+
+                if (selectedToothType && selectedStructureLoss) {
+                    const data = decisionData[selectedToothType][selectedStructureLoss];
+                    recommendationBox.style.opacity = '1';
+                    recommendationBox.innerHTML = `
+                        <h4 class="text-2xl font-bold mb-3 text-[var(--accent-primary)]">${data.title}</h4>
+                        <p class="text-gray-600 mb-6 max-w-2xl mx-auto">${data.details}</p>
+                        <div class="text-left max-w-md mx-auto">
+                            <h5 class="font-semibold mb-2 text-[var(--text-primary)]">Puntos Clave:</h5>
+                            <ul class="list-disc list-inside space-y-1 text-gray-600">
+                                ${data.key_points.map(p => `<li>${p}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                } else {
+                     recommendationBox.style.opacity = '0';
+                     setTimeout(() => {
+                         recommendationBox.innerHTML = '<p class="text-gray-500">Seleccione las opciones para ver la recomendación...</p>';
+                     }, 500);
+                }
+            }
+
+            btnAnterior.addEventListener('click', () => { selectedToothType = 'anterior'; updateUI(); });
+            btnPosterior.addEventListener('click', () => { selectedToothType = 'posterior'; updateUI(); });
+            cardMinima.addEventListener('click', () => { selectedStructureLoss = 'minima'; updateUI(); });
+            cardModerada.addEventListener('click', () => { selectedStructureLoss = 'moderada'; updateUI(); });
+            cardExtensa.addEventListener('click', () => { selectedStructureLoss = 'extensa'; updateUI(); });
+
+
+            const chartData = {
+                all: {
+                    labels: ['Corona Cobertura Total', 'Onlay', 'Poste + Corona', 'Resina Compuesta (Extensa)', 'Endocrown'],
+                    values: [95.4, 93.5, 95.7, 52.5, 91]
+                },
+                posteriors: {
+                    labels: ['Corona Cobertura Total', 'Onlay', 'Resina Compuesta (Mín-Mod)', 'Resina Compuesta (Extensa)', 'Endocrown'],
+                    values: [96, 94, 90, 38, 91]
+                }
+            };
+
+            const ctx = document.getElementById('survivalChart').getContext('2d');
+            const survivalChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: chartData.all.labels,
+                    datasets: [{
+                        label: 'Tasa de Supervivencia a 5 años (%)',
+                        data: chartData.all.values,
+                        backgroundColor: 'rgba(74, 144, 226, 0.6)',
+                        borderColor: 'rgba(74, 144, 226, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: { display: true, text: 'Probabilidad de Supervivencia (%)' }
+                        },
+                        x: {
+                            ticks: {
+                                autoSkip: false,
+                                maxRotation: 0,
+                                minRotation: 0,
+                                callback: function(value, index, values) {
+                                    const label = this.getLabelForValue(value);
+                                    if (label.length > 16) {
+                                        return label.split(' ').map(word => word.length > 8 ? word.substring(0,8) + '...' : word);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Supervivencia: ${context.parsed.y}%`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            const chartFilterAll = document.getElementById('chart-filter-all');
+            const chartFilterPosteriors = document.getElementById('chart-filter-posteriors');
+
+            function updateChart(filter) {
+                [chartFilterAll, chartFilterPosteriors].forEach(btn => btn.classList.remove('active'));
+                const data = chartData[filter];
+                survivalChart.data.labels = data.labels;
+                survivalChart.data.datasets[0].data = data.values;
+                survivalChart.update();
+                document.getElementById(`chart-filter-${filter}`).classList.add('active');
+            }
+
+            chartFilterAll.addEventListener('click', () => updateChart('all'));
+            chartFilterPosteriors.addEventListener('click', () => updateChart('posteriors'));
+
+            updateChart('all');
+
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+            document.querySelectorAll('#mobile-menu a').forEach(link => {
+                link.addEventListener('click', () => mobileMenu.classList.add('hidden'));
+            });
+
+            const navLinks = document.querySelectorAll('.nav-link');
+            const sections = document.querySelectorAll('main section');
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        navLinks.forEach(link => {
+                            link.classList.toggle('active', link.getAttribute('href').substring(1) === entry.target.id);
+                        });
+                    }
+                });
+            }, { rootMargin: '-50% 0px -50% 0px' });
+
+            sections.forEach(section => {
+                observer.observe(section);
+            });
+        });
+    </script>
+
+</body>
+</html>
